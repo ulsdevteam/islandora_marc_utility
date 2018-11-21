@@ -1,0 +1,126 @@
+<?php
+/**
+ * @file
+ * Module used to handle finding aid batches through the UI and drush.
+ */
+
+define('ISLANDORA_MARC_UTILITY_MANAGE', 'MARC utility manage');
+define('ISLANDORA_MARC_UTILITY_CAN_APPLY_DATASTREAM', 'MARC utility apply ds');
+define('ISLANDORA_MARC_UTILITY', 'use MARC utility');
+
+/**
+ * Implements hook_menu().
+ */
+function islandora_marc_utility_menu() {
+  $items = array(
+    'admin/islandora/islandora_marc_utility' => array(
+      'title' => t('Islandora MARC Utility'),
+      'description' => 'Settings for Islandora MARC Utility.',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('islandora_marc_utility_admin_settings'),
+      'access arguments' => array(ISLANDORA_MARC_UTILITY_MANAGE),
+      'file' => 'includes/admin.form.inc',
+    ),
+    'admin/islandora/tools/islandora_marc_utility' => array(
+      'title' => t('Islandora MARC Utility'),
+      'description' => 'The Islandora MARC Utility for extracting individual MARC and MODS records from MARC collections.',
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('islandora_marc_utility_form'),
+      'access arguments' => array(ISLANDORA_MARC_UTILITY),
+      'file' => 'includes/upload_mrc.form.inc',
+    ),
+    'admin/islandora/tools/islandora_marc_utility/viewer/%' => array(
+      'title' => t('Islandora MARC Utility | Viewer'),
+      'type' => MENU_CALLBACK,
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('islandora_marc_utility_file_viewer_display', 5),
+      'access arguments' => array(ISLANDORA_MARC_UTILITY),
+      'file' => 'includes/file_viewer.inc',
+    ),
+    'admin/islandora/tools/islandora_marc_utility/download/%' => array(
+      'title' => t('Islandora MARC Utility | Download'),
+      'type' => MENU_CALLBACK,
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('islandora_marc_utility_download', 5),
+      'access arguments' => array(ISLANDORA_MARC_UTILITY),
+      'file' => 'includes/download.inc',
+    ),
+    'admin/islandora/tools/islandora_marc_utility/apply_datastream/%' => array(
+      'title' => t('Islandora MARC Utility | Apply Datastream'),
+      'type' => MENU_CALLBACK,
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('islandora_marc_utility_apply_datastream_handler', 5),
+      'access arguments' => array(ISLANDORA_MARC_UTILITY),
+      'file' => 'includes/apply_datastream.inc',
+    ),
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function islandora_marc_utility_permission() {
+  return array(
+    ISLANDORA_MARC_UTILITY => array(
+      'title' => t('Use Islandora MARC Utility.'),
+      'description' => t('User can use the Islandora MARC Utility.'),
+    ),
+    ISLANDORA_MARC_UTILITY_MANAGE => array(
+      'title' => t('Administer Islandora MARC Utility.'),
+      'description' => t('User can administer and configure the Islandora MARC Utility.'),
+    ),
+    ISLANDORA_MARC_UTILITY_CAN_APPLY_DATASTREAM => array(
+      'title' => t('Apply files as datastreams.'),
+      'description' => t('User can apply the resultant MARCXML or MODS xml to the underlying objects.'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_presprocess_theme().
+ *
+ * This code will add the javascript if on a datastreams_io page.
+ */
+function islandora_marc_utility_preprocess_page(&$vars) {
+  $item = menu_get_item();
+  $paths_for_css = array(
+      'admin/islandora/tools/islandora_marc_utility',
+      'admin/islandora/tools/islandora_marc_utility/viewer/%',
+      'admin/islandora/tools/islandora_marc_utility/download/%',
+      'admin/islandora/tools/islandora_marc_utility/apply_datastream/%',
+    );
+  if (is_array($item)) {
+    if (!(array_search($item['path'], $paths_for_css) === FALSE)) {
+      $module_path = drupal_get_path('module', 'islandora_marc_utility');
+      drupal_add_css($module_path . '/css/islandora_marc_utility.css');
+    }
+  }
+}
+
+/**
+ * Implements hook_theme()
+ */
+function islandora_marc_utility_theme() {
+  return array(
+    'islandora_marc_utility_file_viewer' => array(
+      'template' => 'theme/islandora-marc-utility-file-viewer',
+      'variables' => array(
+          'hash' => '',
+          'filename' => '',
+          'file_contents' => '',
+          'subject' => '',
+      ),
+    ),
+    'islandora_marc_utility_apply_datastream' => array(
+      'template' => 'theme/islandora-marc-utility-apply-datastream',
+      'variables' => array(
+          'filename' => '',
+          'file_contents' => '',
+          'subject' => '',
+          'has_object' => FALSE,
+          'Fedora_PID' => '',
+      ),
+    ),
+  );
+}

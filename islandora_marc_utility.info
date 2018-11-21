@@ -1,0 +1,8 @@
+name = Islandora MARC Utility
+description = "MARC utilities for parsing MARC mrc or MARCXML (collection) files."
+package = Islandora
+version = 7.x-1.6
+core = 7.x
+dependencies[] = islandora_solr
+configure = admin/islandora/islandora_marc_utility
+php = 5.3

@@ -1,0 +1,21 @@
+.imu_numeric, .imu_numeric_header {
+    text-align: right;
+}
+
+.imu_numeric {
+    font-family: monospace;
+}
+
+.imu_red {
+    color: red;
+}
+
+.imu_file_viewer {
+    border: 1px solid #555;
+    box-shadow: 3px 3px 3px #DDD;
+    width: 100%;
+    min-height: 900px;
+    height: 900px;
+    font-family: monospace;
+    overflow: scroll;
+}
