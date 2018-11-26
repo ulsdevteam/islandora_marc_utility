@@ -9,7 +9,7 @@
  * Form building function.
  */
 function islandora_marc_utility_form($form, &$form_state) {
-  if (!isset($form_state['stage'])) { // && (array_key_exists('files', $_FILES) && count($_FILES['files']) > 0)) {
+  if (!isset($form_state['stage'])) {
     $form_state['stage'] = 'step1';
   }
   $form = array();
@@ -284,7 +284,7 @@ function islandora_marc_utility_mrc_split($filepath) {
 
   $return_files = array();
 
-  require 'File/MARC.php';
+  require_once 'File/MARC.php';
 
   // Retrieve a set of MARC records from a file
   $journals = new File_MARC($filepath);
