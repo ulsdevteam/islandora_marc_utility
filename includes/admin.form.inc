@@ -1,8 +1,5 @@
 <?php
 
-define('MRC_XPATH_PLACEHOLDER', '/marc:record/marc:datafield[@tag="035"]/marc:subfield[substring(text(), 1, 7) = "(OCoLC)" and @code="a"]');
-define('MODS_SOLR_FIELDNAME_PLACEHOLDER', 'mods_identifier_oclc_s');
-
 /**
  * @file
  * Handles the display/submission of the admin settings form for this module.
@@ -20,45 +17,52 @@ define('MODS_SOLR_FIELDNAME_PLACEHOLDER', 'mods_identifier_oclc_s');
  *   The Drupal form definition.
  */
 function islandora_marc_utility_admin_settings(array $form, array &$form_state) {
-  $form = array(
-    'mrc_identifier_tag_xpath' => array(
-      '#title' => t('XPath to MARCXML node'),
-      '#type' => 'textfield',
-      '#attributes' => array(
-        'placeholder' => MRC_XPATH_PLACEHOLDER, // '/marc:record/marc:datafield[@tag="035"]/marc:subfield[substring(text(), 1, 7) = "(OCoLC)" and @code="a"]',
-      ),
-      '#description' => 'This should be a legal XPath that returns the single ' .
-        '"identifier" node that is to be matched with a possible object\'s MODS field value.',
-      '#default_value' => variable_get('islandora_marc_utility_mrc_identifier_tag_xpath', ''),
+  $form = array();
+  if (user_access(ISLANDORA_MARC_UTILITY)) {
+    $form['user'] = array(
+        '#type' => 'item',
+        '#markup' => l('Use the Islandora MARC Utility',
+              'admin/islandora/tools/islandora_marc_utility'),
+    );
+  }
+  $form['mrc_identifier_tag_xpath'] = array(
+    '#title' => t('XPath to MARCXML node'),
+    '#type' => 'textfield',
+    '#size' => 120,
+    '#attributes' => array(
+      'placeholder' => MRC_XPATH_PLACEHOLDER,
     ),
-    'mods_solr_fieldname' => array(
-      '#title' => t('MODS identifier Solr fieldname.'),
-      '#type' => 'textfield',
-      '#attributes' => array(
-        'placeholder' => MODS_SOLR_FIELDNAME_PLACEHOLDER, // 'mods_identifier_oclc_s',
-      ),
-      '#description' => 'Solr fieldname for the MODS identifier that corresponds ' .
-        'to the mrc identifier (above).',
-      '#default_value' => variable_get('islandora_marc_utility_mods_solr_fieldname', ''),
+    '#description' => t('This should be a legal XPath that returns the single ' .
+      '"identifier" node that is to be matched with a possible object\'s MODS field value.'),
+    '#default_value' => variable_get('islandora_marc_utility_mrc_identifier_tag_xpath', ''),
+  );
+  $form['mods_solr_fieldname'] = array(
+    '#title' => t('MODS identifier Solr fieldname.'),
+    '#type' => 'textfield',
+    '#attributes' => array(
+      'placeholder' => MODS_SOLR_FIELDNAME_PLACEHOLDER,
     ),
-    'temp_path' => array(
-      '#title' => t('Directory for extracting MARC xml and making MODS xml files.'),
-      '#type' => 'textfield',
-      '#attributes' => array(
-        'placeholder' => variable_get('file_temporary_path'),
-      ),
-      '#description' => 'Path to extract the uploaded MARC MRC or xml files.' .
-        'If empty, the site\'s ' .
-        (user_access('administer site configuration') ?
-        l('temporary directory', 'admin/config/media/file-system') : 'temporary directory') .
-        ' will be used.',
-      '#default_value' => variable_get('islandora_marc_utility_temp_path', ''),
+    '#description' => t('Solr fieldname for the MODS identifier that corresponds ' .
+      'to the mrc identifier (above).'),
+    '#default_value' => variable_get('islandora_marc_utility_mods_solr_fieldname', ''),
+  );
+  $form['temp_path'] = array(
+    '#title' => t('Directory for extracting MARC xml and making MODS xml files.'),
+    '#type' => 'textfield',
+    '#attributes' => array(
+      'placeholder' => variable_get('file_temporary_path'),
     ),
+    '#description' => t('Path to extract the uploaded MARC MRC or xml files.' .
+      'If empty, the site\'s ') .
+      (user_access('administer site configuration') ?
+      l('temporary directory', 'admin/config/media/file-system') : t('temporary directory')) .
+      t(' will be used.'),
+    '#default_value' => variable_get('islandora_marc_utility_temp_path', ''),
+  );
 
-    'submit' => array(
-      '#type' => 'submit',
-      '#value' => t('Save configuration'),
-    ),
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save configuration'),
   );
 
   return $form;
@@ -83,11 +87,11 @@ function islandora_marc_utility_admin_settings_submit(array $form, array &$form_
           $form_state['values']['temp_path'];
       variable_set('islandora_marc_utility_temp_path', $use_value);
 
+      // If either of these are blank, store the value defined in the placeholder.
       $use_value = ($form_state['values']['mrc_identifier_tag_xpath'] == '') ?
           MRC_XPATH_PLACEHOLDER :
           $form_state['values']['mrc_identifier_tag_xpath'];
       variable_set('islandora_marc_utility_mrc_identifier_tag_xpath', $use_value);
-
       $use_value = ($form_state['values']['mods_solr_fieldname'] == '') ?
           MODS_SOLR_FIELDNAME_PLACEHOLDER :
           $form_state['values']['mods_solr_fieldname'];

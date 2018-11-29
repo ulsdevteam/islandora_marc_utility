@@ -1,0 +1,42 @@
+/**
+ * @file
+ * Javascript file for islandora_digital_workflow
+ */
+
+
+/*
+ * This will enable / disable the prompts based on the checkbox checked state.
+ * 
+ * @param {type} control
+ * @returns {undefined}
+ */
+function set_override_elements(control) {
+  if (control.checked) {
+    jQuery('#edit-mrc-identifier-tag-xpath').removeAttr("disabled");
+    jQuery('#edit-mrc-identifier-tag-xpath').removeAttr("readonly");
+    jQuery('.edit-mrc-identifier-tag-xpath label').addClass("enabled_text");
+    jQuery('#edit-mrc-identifier-tag-xpath').removeClass("disabled_text");
+    jQuery('.edit-mrc-identifier-tag-xpath label').removeClass("disabled_text");
+    jQuery('.form-item-mrc-identifier-tag-xpath').removeClass("form-disabled");
+    jQuery('#edit-mods-solr-fieldname').removeAttr("disabled");
+    jQuery('#edit-mods-solr-fieldname').removeAttr("readonly");
+    jQuery('.edit-mods-solr-fieldname label').addClass("enabled_text");
+    jQuery('#edit-mods-solr-fieldname').removeClass("disabled_text");
+    jQuery('.edit-mods-solr-fieldname label').removeClass("disabled_text");
+    jQuery('.form-item-mods-solr-fieldname').removeClass("form-disabled");
+  }
+  else {
+    jQuery('#edit-mrc-identifier-tag-xpath').attr('disabled', 'disabled');
+    jQuery('#edit-mrc-identifier-tag-xpath').attr('readonly', 'readonly');
+    jQuery('#edit-mrc-identifier-tag-xpath').addClass("disabled_text");    
+    jQuery('.edit-mrc-identifier-tag-xpath label').addClass("disabled_text");    
+    jQuery('.edit-mrc-identifier-tag-xpath label').removeClass("enabled_text");
+    jQuery('.form-item-mrc-identifier-tag-xpath').addClass("form-disabled");
+    jQuery('#edit-mods-solr-fieldname').attr('disabled', 'disabled');
+    jQuery('#edit-mods-solr-fieldname').attr('readonly', 'readonly');
+    jQuery('#edit-mods-solr-fieldname').addClass("disabled_text");    
+    jQuery('.edit-mods-solr-fieldname label').addClass("disabled_text");
+    jQuery('.edit-mods-solr-fieldname label').removeClass("enabled_text");
+    jQuery('.form-item-mods-solr-fieldname').addClass("form-disabled");
+  }
+}

@@ -32,6 +32,47 @@ function islandora_marc_utility_form($form, &$form_state) {
 function islandora_marc_utility_form_step1($form, &$form_state) {
   $values = isset($form_state['multistep_values']['rate_the_room']) ? $form_state['multistep_values']['rate_the_room'] : array();
   $form = islandora_marc_utility_common_upload_form_elements();
+
+  $form['override_settings_wrapper'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Override settings'),
+    'override' => array(
+      '#type' => 'checkbox',
+      '#title' => t('Override'),
+      '#default_value' => 0,
+      '#attributes' => array(
+        'onchange' => 'set_override_elements(this)',
+      ),
+    ),
+    'mrc_identifier_tag_xpath' => array(
+      '#title' => t('XPath to MARCXML node'),
+      '#type' => 'textfield',
+      '#size' => 120,
+      '#attributes' => array(
+        'placeholder' => MRC_XPATH_PLACEHOLDER,
+        'readonly' => 'readonly',
+        'disabled' => 'disabled',
+        'class' => array('disabled_text'),
+      ),
+      '#description' => t('This should be a legal XPath that returns the single ' .
+        '"identifier" node that is to be matched with a possible object\'s MODS field value.'),
+      '#default_value' => variable_get('islandora_marc_utility_mrc_identifier_tag_xpath', ''),
+    ),
+    'mods_solr_fieldname' => array(
+      '#title' => t('MODS identifier Solr fieldname.'),
+      '#type' => 'textfield',
+      '#attributes' => array(
+        'placeholder' => MODS_SOLR_FIELDNAME_PLACEHOLDER,
+        'readonly' => 'readonly',
+        'disabled' => 'disabled',
+        'class' => array('disabled_text'),
+      ),
+      '#description' => t('Solr fieldname for the MODS identifier that corresponds ' .
+        'to the mrc identifier (above).'),
+      '#default_value' => variable_get('islandora_marc_utility_mods_solr_fieldname', ''),
+    ),
+  );
+
   // Display the upload form.
   $form['marc_upload'] = array(
     '#type' => 'file',
@@ -54,7 +95,7 @@ function islandora_marc_utility_common_upload_form_elements() {
   if (user_access(ISLANDORA_MARC_UTILITY_MANAGE)) {
     $form['admin'] = array(
         '#type' => 'item',
-        '#markup' => l('Configure Islandora MARC Utility',
+        '#markup' => l('Islandora MARC Utility - Settings',
               'admin/islandora/islandora_marc_utility',
               array('attributes' => array('target' => '_blank'))),
     );
@@ -67,22 +108,22 @@ function islandora_marc_utility_form_step2($form, &$form_state, $is_completed = 
   // Display the Processing form.
   $form['name'] = array(
     '#type' => 'item',
-    '#title' => 'Name',
+    '#title' => t('Name'),
     '#description' => $_FILES['files']['name']['marc_upload'],
   );
   $form['type'] = array(
     '#type' => 'item',
-    '#title' => 'Type',
+    '#title' => t('Type'),
     '#description' => $_FILES['files']['type']['marc_upload'],
   );
   $form['tmp_name'] = array(
     '#type' => 'item',
-    '#title' => 'tmp name',
+    '#title' => t('tmp name'),
     '#description' => $_FILES['files']['tmp_name']['marc_upload'],
   );
   $form['size'] = array(
     '#type' => 'item',
-    '#title' => 'Size (bytes)',
+    '#title' => t('Size (bytes)'),
     '#description' => number_format($_FILES['files']['size']['marc_upload']),
   );
 
@@ -102,9 +143,22 @@ function islandora_marc_utility_form_step2($form, &$form_state, $is_completed = 
     $fn = '';
   }
 
+  // If the user selected to override the configured xpath and MODS field, pass those
+  // values in to whichever parsing function is needed for the uploaded file.
+  $marc_identifier_xpath = variable_get('islandora_marc_utility_mrc_identifier_tag_xpath', MRC_XPATH_PLACEHOLDER);
+  $mods_identifier_solr_fieldname = variable_get('islandora_marc_utility_mods_solr_fieldname', MODS_SOLR_FIELDNAME_PLACEHOLDER);
+  if (isset($_POST['override']) && $_POST['override']) {
+    if (isset($_POST['mrc_identifier_tag_xpath']) && $_POST['mrc_identifier_tag_xpath']) {
+      $marc_identifier_xpath = $_POST['mrc_identifier_tag_xpath'];
+    }
+    if (isset($_POST['mods_solr_fieldname']) && $_POST['mods_solr_fieldname']) {
+      $mods_identifier_solr_fieldname = $_POST['mods_solr_fieldname'];
+    }
+  }
+
   // This code will perform everything in the temp directory.
   $marc_and_mods_records = (($fn) ?
-      $fn($_FILES['files']['tmp_name']['marc_upload']) :
+      $fn($_FILES['files']['tmp_name']['marc_upload'], $marc_identifier_xpath, $mods_identifier_solr_fieldname) :
       array());
   islandora_marc_utility_add_operation_links_and_title($marc_and_mods_records);
   $form['cancel'] = array(
@@ -279,7 +333,7 @@ function islandora_marc_utility_runXslTransform($info) {
   return $processor->transformToXML($input);
 }
 
-function islandora_marc_utility_mrc_split($filepath) {
+function islandora_marc_utility_mrc_split($filepath, $marc_identifier_xpath, $mods_identifier_solr_fieldname) {
   module_load_include('inc', 'islandora_marc_utility', 'includes/solr_query');
 
   $return_files = array();
@@ -294,7 +348,7 @@ function islandora_marc_utility_mrc_split($filepath) {
     $results = islandora_marc_utility_get_marc_mods_bib_id_from_record($record, $i);
     $return_files[$i]['bib_id'] = $results['bib_id'];
     $marc_contents = file_get_contents($results['MARC']);
-    $return_files[$i]['Fedora_PID'] = islandora_marc_utility_find_object_pid_from_marcxml_file($marc_contents);
+    $return_files[$i]['Fedora_PID'] = islandora_marc_utility_find_object_pid_from_marcxml_file($marc_contents, $marc_identifier_xpath, $mods_identifier_solr_fieldname);
     $return_files[$i]['MARC'] = $results['MARC'];
     $return_files[$i]['MODS'] = $results['MODS'];
     $return_files[$i]['MARC size'] = filesize($results['MARC']);
@@ -374,7 +428,7 @@ function islandora_marc_utility_get_marc_mods_bib_id_from_record($recordobj_or_x
 }
 
 // Takes a MARCXML file and returns same as the MARC mrc code above.
-function islandora_marc_utility_marcxml_split($filepath) {
+function islandora_marc_utility_marcxml_split($filepath, $marc_identifier_xpath, $mods_identifier_solr_fieldname) {
   module_load_include('inc', 'islandora_marc_utility', 'includes/solr_query');
 
   $return_files = array();
@@ -394,7 +448,7 @@ function islandora_marc_utility_marcxml_split($filepath) {
     $results = islandora_marc_utility_get_marc_mods_bib_id_from_record($str, $i);
     $return_files[$i]['bib_id'] = $results['bib_id'];
     $marc_contents = file_get_contents($results['MARC']);
-    $return_files[$i]['Fedora_PID'] = islandora_marc_utility_find_object_pid_from_marcxml_file($marc_contents);
+    $return_files[$i]['Fedora_PID'] = islandora_marc_utility_find_object_pid_from_marcxml_file($marc_contents, $marc_identifier_xpath, $mods_identifier_solr_fieldname);
     $return_files[$i]['MARC'] = $results['MARC'];
     $return_files[$i]['MODS'] = $results['MODS'];
     $return_files[$i]['MARC size'] = filesize($results['MARC']);

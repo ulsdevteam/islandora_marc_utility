@@ -11,13 +11,10 @@ Upload either a MARC mrc file or a MARCXML (collection) file and be able to:
 
 ## Requirements
 
-This module requires the following modules/libraries:
+This module requires PHP version 5.5 at least.  This module also requires the following modules/libraries:
 
 * [Islandora](https://github.com/islandora/islandora)
-* [Tuque](https://github.com/islandora/tuque)
-
-## Optional Modules
-* [Islandora Solr Search](https://github.com/Islandora/islandora_solr_search)
+* [Islandora Solr Search](https://github.com/Islandora/islandora_solr_search) - Searches an Islandora Solr index.  This is required in order to find matching objects that have a specific MODS value.
 
 **Required software**
 For some of the operations of this module, some other software should be installed on the web server that will be running this.

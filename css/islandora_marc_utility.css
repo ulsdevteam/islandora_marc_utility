@@ -19,3 +19,11 @@
     font-family: monospace;
     overflow: scroll;
 }
+
+.disabled_text {
+    color: #AAA;
+}
+
+label.enabled_text {
+    color: inherit !important;
+}

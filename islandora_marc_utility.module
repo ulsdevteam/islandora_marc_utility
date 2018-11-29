@@ -4,6 +4,11 @@
  * Module used to handle finding aid batches through the UI and drush.
  */
 
+// General constants.
+define('MRC_XPATH_PLACEHOLDER', '/marc:record/marc:datafield[@tag="035"]/marc:subfield[substring(text(), 1, 7) = "(OCoLC)" and @code="a"]');
+define('MODS_SOLR_FIELDNAME_PLACEHOLDER', 'mods_identifier_oclc_s');
+
+// Permission constants.
 define('ISLANDORA_MARC_UTILITY_MANAGE', 'MARC utility manage');
 define('ISLANDORA_MARC_UTILITY_CAN_APPLY_DATASTREAM', 'MARC utility apply ds');
 define('ISLANDORA_MARC_UTILITY', 'use MARC utility');
@@ -14,8 +19,8 @@ define('ISLANDORA_MARC_UTILITY', 'use MARC utility');
 function islandora_marc_utility_menu() {
   $items = array(
     'admin/islandora/islandora_marc_utility' => array(
-      'title' => t('Islandora MARC Utility'),
-      'description' => 'Settings for Islandora MARC Utility.',
+      'title' => t('Islandora MARC Utility - Settings'),
+      'description' => t('Settings for Islandora MARC Utility.'),
       'page callback' => 'drupal_get_form',
       'page arguments' => array('islandora_marc_utility_admin_settings'),
       'access arguments' => array(ISLANDORA_MARC_UTILITY_MANAGE),
@@ -23,7 +28,7 @@ function islandora_marc_utility_menu() {
     ),
     'admin/islandora/tools/islandora_marc_utility' => array(
       'title' => t('Islandora MARC Utility'),
-      'description' => 'The Islandora MARC Utility for extracting individual MARC and MODS records from MARC collections.',
+      'description' => t('The Islandora MARC Utility for extracting individual MARC and MODS records from MARC collections.'),
       'page callback' => 'drupal_get_form',
       'page arguments' => array('islandora_marc_utility_form'),
       'access arguments' => array(ISLANDORA_MARC_UTILITY),
@@ -93,6 +98,7 @@ function islandora_marc_utility_preprocess_page(&$vars) {
   if (is_array($item)) {
     if (!(array_search($item['path'], $paths_for_css) === FALSE)) {
       $module_path = drupal_get_path('module', 'islandora_marc_utility');
+      drupal_add_js($module_path . '/js/marc_utility.js');
       drupal_add_css($module_path . '/css/islandora_marc_utility.css');
     }
   }
