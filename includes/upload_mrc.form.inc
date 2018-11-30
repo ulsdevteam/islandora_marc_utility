@@ -333,9 +333,13 @@ function islandora_marc_utility_runXslTransform($info) {
   return $processor->transformToXML($input);
 }
 
-function islandora_marc_utility_mrc_split($filepath, $marc_identifier_xpath, $mods_identifier_solr_fieldname) {
+function islandora_marc_utility_mrc_split($filepath, $marc_identifier_xpath = '', $mods_identifier_solr_fieldname = '') {
   module_load_include('inc', 'islandora_marc_utility', 'includes/solr_query');
 
+  $marc_identifier_xpath = (!$marc_identifier_xpath) ?
+      variable_get('islandora_marc_utility_mrc_identifier_tag_xpath', MRC_XPATH_PLACEHOLDER) : $marc_identifier_xpath;
+  $mods_identifier_solr_fieldname = (!$mods_identifier_solr_fieldname) ?
+      variable_get('islandora_marc_utility_mods_solr_fieldname', MODS_SOLR_FIELDNAME_PLACEHOLDER) : $mods_identifier_solr_fieldname;
   $return_files = array();
 
   require_once 'File/MARC.php';
