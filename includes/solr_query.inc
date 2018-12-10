@@ -6,11 +6,13 @@
  * and open the template in the editor.
  */
 
-function islandora_marc_utility_query_solr_for_mrc_value($mrc_value) {
-  // Based on the configuration, run an xpath query on the file to get the
-  // identifier value from the
-}
-
+/**
+ *
+ * @param type $marcxml_file
+ * @param type $marc_identifier_xpath
+ * @param type $mods_identifier_solr_fieldname
+ * @return type
+ */
 function islandora_marc_utility_find_object_pid_from_marcxml_file($marcxml_file, $marc_identifier_xpath, $mods_identifier_solr_fieldname) {
   // 1. parse the marcxml file to get the configured MARC identifier value.
   //    Uses variable_get('islandora_marc_utility_mrc_identifier_tag_xpath',
@@ -29,6 +31,14 @@ function islandora_marc_utility_find_object_pid_from_marcxml_file($marcxml_file,
   return $found_object_PID;
 }
 
+/**
+ *
+ * @param type $xml_content
+ * @param type $xpath
+ * @param type $namespace
+ * @param type $namespace_uri
+ * @return type
+ */
 function islandora_marc_utility_get_marc_identifer_value($xml_content, $xpath, $namespace = '', $namespace_uri = '') {
   $xml = new SimpleXMLElement($xml_content);
   if ($namespace && $namespace_uri) {
@@ -47,6 +57,18 @@ function islandora_marc_utility_get_marc_identifer_value($xml_content, $xpath, $
   return $match;
 }
 
+/**
+ * Helper function to search Solr for any set of filter values and return ONLY
+ * a single value.
+ *
+ * @param array $filters
+ *   These should be in a legal Solr syntax and each have a syntax like:
+ * {FIELD_NAME}:{FIELD_VALUE}
+ * @param integer $rows
+ *   How many rows to return.
+ * @return mixed (string:NULL)
+ *   The value that was found or NULL.
+ */
 function islandora_marc_utility_solr_query_for_object($field, $filters, $rows) {
   $value = NULL;
   $query_processor = new IslandoraSolrQueryProcessor();
