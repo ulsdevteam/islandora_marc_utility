@@ -342,7 +342,9 @@ function islandora_marc_utility_mrc_split($filepath, $marc_identifier_xpath = ''
       variable_get('islandora_marc_utility_mods_solr_fieldname', MODS_SOLR_FIELDNAME_PLACEHOLDER) : $mods_identifier_solr_fieldname;
   $return_files = array();
 
-  require_once 'File/MARC.php';
+  if (!islandora_marc_utility_require_once_catch_exception('File/MARC.php')) {
+    return array();
+  }
 
   // Retrieve a set of MARC records from a file
   $journals = new File_MARC($filepath);
@@ -460,4 +462,42 @@ function islandora_marc_utility_marcxml_split($filepath, $marc_identifier_xpath,
     $i++;
   }
   return $return_files;
+}
+
+/**
+ * Helper function to handle the require_once call that could lead to a white
+ * screen.
+ *
+ * @param string $filepath
+ *   The include file that is to be passed to the "require_once" call.
+ * @throws Exception
+ */
+function islandora_marc_utility_require_once_catch_exception($filepath) {
+  try {
+    if (! @include_once( $filepath )) // @ - to suppress warnings,
+    // Could use error_reporting function for the same purpose.
+      throw new Exception (t('"@filepath" does not exist',array(
+          '@filepath' => $filepath,
+      )));
+    // or
+    if (!file_exists($filepath)) {
+      throw new Exception (t('"@filepath" does not exist',array(
+          '@filepath' => $filepath,
+      )));
+      return FALSE;
+    }
+    else
+      require_once($filepath);
+      return TRUE;
+    }
+  catch(Exception $e) {
+    $message = '<b>Required file could not be loaded for the "Islandora MARC Utility" module.</b>' .
+      '  It may need to be installed -- please refer to ' .
+      l('https://pear.php.net/package/File_MARC/download', 'https://pear.php.net/package/File_MARC/download',
+        array('attributes' => array('target' => '_blank'))) . '.<br>' .
+      'Message : ' . $e->getMessage() . '<br>' .
+      'Code : ' . $e->getCode();
+    drupal_set_message($message, 'error');
+    return FALSE;
+  }
 }
