@@ -590,23 +590,14 @@ function islandora_marc_utility_marcxml_split($filepath, $marc_identifier_xpath,
  * @throws Exception
  */
 function islandora_marc_utility_require_once_catch_exception($filepath) {
+
   try {
     if (! @include_once( $filepath )) // @ - to suppress warnings,
     // Could use error_reporting function for the same purpose.
       throw new Exception (t('"@filepath" does not exist',array(
           '@filepath' => $filepath,
       )));
-    // or
-    if (!file_exists($filepath)) {
-      throw new Exception (t('"@filepath" does not exist',array(
-          '@filepath' => $filepath,
-      )));
-      return FALSE;
-    }
-    else
-      require_once($filepath);
-      return TRUE;
-    }
+  }
   catch(Exception $e) {
     $message = '<b>Required file could not be loaded for the "Islandora MARC Utility" module.</b>' .
       '  It may need to be installed -- please refer to ' .
@@ -617,4 +608,5 @@ function islandora_marc_utility_require_once_catch_exception($filepath) {
     drupal_set_message($message, 'error');
     return FALSE;
   }
+  return TRUE;
 }
