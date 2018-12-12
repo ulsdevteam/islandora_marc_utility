@@ -88,6 +88,26 @@ function islandora_marc_utility_form_step1($form, &$form_state) {
         'to the mrc identifier (above).'),
       '#default_value' => variable_get('islandora_marc_utility_mods_solr_fieldname', ''),
     ),
+    'namespace' => array(
+      '#title' => t('Fedora namespace'),
+      '#type' => 'textfield',
+      '#attributes' => array(
+        'placeholder' => 'islandora',
+        'readonly' => 'readonly',
+        'disabled' => 'disabled',
+        'class' => array('disabled_text'),
+        ),
+      '#description' => t('Namespace for objects in the datastore.  For an object ' .
+        '"<b>islandora</b>:123", the namespace is "islandora".  ') .
+        (module_exists('islandora_datastreams_io') ?  t('"Islandora Datastreams ' .
+            'Input/Output Utility" is installed and')
+          : t('The module "') . l('Datastreams Input/Output Utility',
+              'https://github.com/ulsdevteam/islandora_datastreams_io') . '"') .
+        t(' is capable of importing the ZIP files that are created by this utility\'s ' .
+            '"Download all" function.')
+        ,
+      '#default_value' => variable_get('islandora_marc_utility_namespace'),
+      ),
   );
 
   // Display the upload form.
@@ -156,7 +176,7 @@ function islandora_marc_utility_form_step2($form, &$form_state, $is_completed = 
   );
   $form['tmp_name'] = array(
     '#type' => 'item',
-    '#title' => t('tmp name'),
+    '#title' => t('Temporary file name'),
     '#description' => $_FILES['files']['tmp_name']['marc_upload'],
   );
   $form['size'] = array(
@@ -185,6 +205,7 @@ function islandora_marc_utility_form_step2($form, &$form_state, $is_completed = 
   // values in to whichever parsing function is needed for the uploaded file.
   $marc_identifier_xpath = variable_get('islandora_marc_utility_mrc_identifier_tag_xpath', MRC_XPATH_PLACEHOLDER);
   $mods_identifier_solr_fieldname = variable_get('islandora_marc_utility_mods_solr_fieldname', MODS_SOLR_FIELDNAME_PLACEHOLDER);
+  $namespace = variable_get('islandora_marc_utility_namespace', 'islandora');
   if (isset($_POST['override']) && $_POST['override']) {
     if (isset($_POST['mrc_identifier_tag_xpath']) && $_POST['mrc_identifier_tag_xpath']) {
       $marc_identifier_xpath = $_POST['mrc_identifier_tag_xpath'];
@@ -192,11 +213,14 @@ function islandora_marc_utility_form_step2($form, &$form_state, $is_completed = 
     if (isset($_POST['mods_solr_fieldname']) && $_POST['mods_solr_fieldname']) {
       $mods_identifier_solr_fieldname = $_POST['mods_solr_fieldname'];
     }
+    if (isset($_POST['namespace']) && $_POST['namespace']) {
+      $namespace = $_POST['namespace'];
+    }
   }
 
   // This code will perform everything in the temp directory.
   $marc_and_mods_records = (($fn) ?
-      $fn($_FILES['files']['tmp_name']['marc_upload'], $marc_identifier_xpath, $mods_identifier_solr_fieldname) :
+      $fn($_FILES['files']['tmp_name']['marc_upload'], $marc_identifier_xpath, $mods_identifier_solr_fieldname, $namespace) :
       array());
   islandora_marc_utility_add_operation_links_and_title($marc_and_mods_records);
   $form['cancel'] = array(
@@ -204,6 +228,7 @@ function islandora_marc_utility_form_step2($form, &$form_state, $is_completed = 
     '#value' => t('Cancel'),
     '#suffix' => ' ',
   );
+  $objects_found_by_match = 0;
   if (!$is_completed && $fn) {
     $header = array(
         'bib_id',
@@ -213,26 +238,60 @@ function islandora_marc_utility_form_step2($form, &$form_state, $is_completed = 
         array('data' => 'MARC size', 'class' => array('imu_numeric_header')),
         array('data' => 'MODS size', 'class' => array('imu_numeric_header')),
     );
-    $form['download_all'] = array(
-      '#type' => 'submit',
-      '#attributes' => array(
-          'title' => 'Not implemented yet',
-          'disabled' => 'disabled',
-      ),
-      '#value' => t('Download all'),
+    $temp_path = drupal_realpath(variable_get('islandora_marc_utility_temp_path', variable_get('file_temporary_path', '/tmp')));
+    $applyall_files = $download_files = array();
+    foreach ($marc_and_mods_records as $idx => $marc_and_mods_arr) {
+      if (array_key_exists('MARC', $marc_and_mods_arr) && array_key_exists('filepath', $marc_and_mods_arr['MARC'])) {
+        $download_files[] = $marc_and_mods_arr['MARC']['filepath'] . '
+';
+        if ($marc_and_mods_arr['Fedora_PID']) {
+          $applyall_files[] = $marc_and_mods_arr['Raw_Fedora_PID'] . '=' . $temp_path . '/' . $marc_and_mods_arr['MARC']['filepath'] . '
+';
+        }
+      }
+      if (array_key_exists('MODS', $marc_and_mods_arr) && array_key_exists('filepath', $marc_and_mods_arr['MODS'])) {
+        $download_files[] = $marc_and_mods_arr['MODS']['filepath'] . '
+';
+        if ($marc_and_mods_arr['Fedora_PID']) {
+          $applyall_files[] = $marc_and_mods_arr['Raw_Fedora_PID'] . '=' . $temp_path . '/' . $marc_and_mods_arr['MODS']['filepath'] . '
+';
+        }
+      }
+      if ($marc_and_mods_arr['Fedora_PID']) {
+        $objects_found_by_match++;
+      }
+      unset($marc_and_mods_records[$idx]['Raw_Fedora_PID']);
+    }
+
+    $temp_records_manifest_filename = tempnam(variable_get('file_temporary_path', '/tmp'), 'marc_utility_downloadall_manifest_');
+    file_put_contents($temp_records_manifest_filename, $download_files);
+    $temp_applyall_manifest_filename = tempnam(variable_get('file_temporary_path', '/tmp'), 'marc_utility_applyall_manifest_');
+    file_put_contents($temp_applyall_manifest_filename, $applyall_files);
+    $form['download_all_link'] = array(
+      '#type' => 'item',
+      '#markup' => l(t('Download All'), 'admin/islandora/tools/islandora_marc_utility/downloadall/' . base64_encode(urlencode($temp_records_manifest_filename)), array('attributes' => array(
+          'class' => array('m_link_button'),
+          'target' => '_blank'))),
       '#suffix' => ' ',
     );
-    $form['apply_all'] = array(
-      '#type' => 'submit',
-      '#value' => t('Apply all datastreams'),
-      '#attributes' => array(
-          'title' => 'Not implemented yet',
-          'disabled' => 'disabled',
-      ),
-      '#suffix' => theme('table', array(
+    $table_markup = theme('table', array(
         'header' => $header,
-        'rows' => $marc_and_mods_records)),
-    );
+        'rows' => $marc_and_mods_records));
+    if (user_access(ISLANDORA_MARC_UTILITY_CAN_APPLY_DATASTREAM)) {
+      $form['apply_all'] = array(
+        '#type' => 'item',
+        '#markup' => (($objects_found_by_match > 0) ?
+              l(t('Apply all datastreams'),
+                  'admin/islandora/tools/islandora_marc_utility/applyall/' . base64_encode(urlencode($temp_applyall_manifest_filename)), array('attributes' => array(
+              'class' => array('m_link_button'),
+            'target' => '_blank'))) 
+            : '<span title="There were no matching objects found for the records below" class="m_link_button b_disabled_text">Apply all datastreams</span>'),
+        '#suffix' => $table_markup,
+      );
+    }
+    else {
+      $form['download_all_link']['#suffix'] = $table_markup;
+    }
   }
 
   return $form;
@@ -250,6 +309,13 @@ function islandora_marc_utility_add_operation_links_and_title(&$marc_and_mods_re
   foreach ($marc_and_mods_records as $index => $arr) {
     $marc_and_mods_records[$index]['MARC'] = islandora_marc_utility_get_operation_links('MARC', $arr);
     $marc_and_mods_records[$index]['MODS'] = islandora_marc_utility_get_operation_links('MODS', $arr);
+    $marc_and_mods_records[$index]['Raw_Fedora_PID'] = $marc_and_mods_records[$index]['Fedora_PID'];
+    $marc_and_mods_records[$index]['Fedora_PID'] =  ($marc_and_mods_records[$index]['Fedora_PID']) ? l($marc_and_mods_records[$index]['Fedora_PID'],
+            'islandora/object/' . $marc_and_mods_records[$index]['Fedora_PID'] . '/manage',
+      array(
+          'attributes' => array(
+              'target' => '_blank'
+      ))) : '';
     $marc_and_mods_records[$index]['MARC size'] = array(
         'data' => number_format($marc_and_mods_records[$index]['MARC size']),
           'class' => array('imu_numeric'),
@@ -269,7 +335,8 @@ function islandora_marc_utility_add_operation_links_and_title(&$marc_and_mods_re
  *   admin/islandora/tools/islandora_marc_utility/download/{b64_value}
  *   admin/islandora/tools/islandora_marc_utility/apply_datastream/{b64_value}
  *
- * @param type $subject
+ * @param string $subject
+ *   'MARC' or 'MODS'
  * @param type $arr
  * @return type
  */
@@ -303,8 +370,30 @@ function islandora_marc_utility_get_operation_links($subject, $arr) {
   }
 
   return array(
-      'data' => implode(" ", $links_arr),
+      'filepath' => $arr[$subject],
+      'data' => implode(" | ", $links_arr),
       'title' => substr($file_contents, 0, 600) . $file_truncated_ellipsis);
+}
+
+/**
+ * Validates the form input.
+ *
+ * Checks the namespace value is legal.
+ *
+ * @param array $elements
+ *   Drupal elements representation as an array.
+ * @param array $form_state
+ *   Drupal form_state representation as passed to the validate function.
+ * @param string $form_id
+ *   The form_id that is being validated -- optional.
+ */
+function islandora_marc_utility_form_validate(&$elements, &$form_state, $form_id = NULL) {
+  // Check that the input for namespace satisfies this:
+  $namespace = $form_state['values']['namespace'];
+  if ($namespace <> '' && !preg_match("/^([A-Za-z0-9]{2,50}|-|\.)$/iD", $namespace)) {
+    form_set_error('namespace', t('<b>Namespace value must only include alphanumeric characters.</b>',
+        array('@namespace' => $namespace)));
+  }
 }
 
 /**
@@ -316,7 +405,12 @@ function islandora_marc_utility_form_submit($form, &$form_state) {
   switch ($form_state['stage']) {
     case 'step2':
       $form_state['multistep_values'][$form_state['stage']] = $form_state['values'];
-      if ($form_state['triggering_element']['#value'] != 'Cancel') {
+      if ($form_state['triggering_element']['#value'] == t('Download All')) {
+        $form_state['complete'] = TRUE;
+        $files = explode("\t", $form_state['values']['download_files']);
+        drupal_set_message(t('"Download All" should be done.'), 'info');
+        return;
+      } elseif ($form_state['triggering_element']['#value'] != 'Cancel') {
         $form_state['complete'] = TRUE;
       }
      break;
@@ -339,7 +433,7 @@ function islandora_marc_utility_form_submit($form, &$form_state) {
   $form_state['multistep_values']['form_build_id'] = $form_state['values']['form_build_id'];
 
   $form_state['stage'] = $form_state['new_stage'];
-  $form_state['rebuild'] = TRUE;
+  $form_state['rebuild'] = ($form_state['triggering_element']['#value'] == t('Download All')) ? FALSE : TRUE;
 }
 
 /**
@@ -414,6 +508,12 @@ function islandora_marc_utility_runXslTransform($info) {
 /**
  * Code to parse a MARC MRC format file.
  *
+ * All parameters are optional aside from the $filepath.  When this is called
+ * from another module, the configuration values for most of the functionality
+ * behind linking an object and applying the datastream to the right object is
+ * not handled here.  That module must know what to do with the MARC and MODS
+ * xml files.
+ *
  * @param string $filepath
  *   The path to the uploaded MARC MRC collection file.
  * @param string $marc_identifier_xpath
@@ -422,17 +522,24 @@ function islandora_marc_utility_runXslTransform($info) {
  * @param string $mods_identifier_solr_fieldname
  *   The value to search the existing Islandora repository for an object that
  * matches the MARC identifier value.
+ * @param string $namespace
+ *   The fedora namespace for the intended objects - ONLY for the purposes of
+ * filenames that get created for export.  See "Islandora Datastreams Input/Output
+ * Utility" https://github.com/ulsdevteam/islandora_datastreams_io for more info
+ * on importing ZIP files.
  * @return array
  *   An associative array that contains info about the MARC and MODS files that
  * were able to be parsed out of the MARC mrc collection.
  */
-function islandora_marc_utility_mrc_split($filepath, $marc_identifier_xpath = '', $mods_identifier_solr_fieldname = '') {
+function islandora_marc_utility_mrc_split($filepath, $marc_identifier_xpath = '', $mods_identifier_solr_fieldname = '', $namespace = '') {
   module_load_include('inc', 'islandora_marc_utility', 'includes/solr_query');
 
   $marc_identifier_xpath = (!$marc_identifier_xpath) ?
       variable_get('islandora_marc_utility_mrc_identifier_tag_xpath', MRC_XPATH_PLACEHOLDER) : $marc_identifier_xpath;
   $mods_identifier_solr_fieldname = (!$mods_identifier_solr_fieldname) ?
       variable_get('islandora_marc_utility_mods_solr_fieldname', MODS_SOLR_FIELDNAME_PLACEHOLDER) : $mods_identifier_solr_fieldname;
+  $namespace = (!$namespace) ?
+      variable_get('islandora_marc_utility_namespace', 'islandora') : $namespace;
   $return_files = array();
 
   if (!islandora_marc_utility_require_once_catch_exception('File/MARC.php')) {
@@ -444,7 +551,7 @@ function islandora_marc_utility_mrc_split($filepath, $marc_identifier_xpath = ''
   $i = 0;
   // Iterate through the retrieved records
   while ($record = $journals->next()) {
-    $results = islandora_marc_utility_get_marc_mods_bib_id_from_record($record, $i);
+    $results = islandora_marc_utility_get_marc_mods_bib_id_from_record($record, $i, $namespace);
     $return_files[$i]['bib_id'] = $results['bib_id'];
     $marc_contents = file_get_contents($results['MARC']);
     $return_files[$i]['Fedora_PID'] = islandora_marc_utility_find_object_pid_from_marcxml_file($marc_contents, $marc_identifier_xpath, $mods_identifier_solr_fieldname);
@@ -467,7 +574,7 @@ function islandora_marc_utility_mrc_split($filepath, $marc_identifier_xpath = ''
  * @return string
  *   The identifier value.
  */
-function islandora_marc_utility_get_marc_mods_bib_id_from_record($recordobj_or_xml, $index = 0) {
+function islandora_marc_utility_get_marc_mods_bib_id_from_record($recordobj_or_xml, $index = 0, $namespace) {
   $marc2mods_xsl = drupal_realpath(drupal_get_path('module', 'islandora_marc_utility')) .
         '/transforms/MARC21slim2MODS3-5.xsl';
   $modsxmlRecordExtract_xsl = drupal_realpath(drupal_get_path('module', 'islandora_marc_utility')) .
@@ -510,7 +617,7 @@ function islandora_marc_utility_get_marc_mods_bib_id_from_record($recordobj_or_x
   // $bib_id value
   @unlink($filename);
 
-  $filename = $temp_path . '/' . $bib_id . '.marcxml.xml';
+  $filename = $temp_path . '/' . $namespace. '_'.  $bib_id . '_MARC.xml';
 
   $bytes_written = file_put_contents($filename, $marc_record);
   $return_array['bib_id'] = $bib_id;
@@ -529,7 +636,7 @@ function islandora_marc_utility_get_marc_mods_bib_id_from_record($recordobj_or_x
             )
           ) : '';
 
-  $filename = $temp_path . '/' . $bib_id . '.mods.xml';
+  $filename = $temp_path . '/' . $namespace. '_'.  $bib_id . '_MODS.xml';
   $bytes_written = file_put_contents($filename, $MODS);
   $return_array['MODS'] = $filename;
 
@@ -539,6 +646,12 @@ function islandora_marc_utility_get_marc_mods_bib_id_from_record($recordobj_or_x
 /**
  * Code to parse a MARCXML format file.
  *
+ * All parameters are optional aside from the $filepath.  When this is called
+ * from another module, the configuration values for most of the functionality
+ * behind linking an object and applying the datastream to the right object is
+ * not handled here.  That module must know what to do with the MARC and MODS
+ * xml files.
+ *
  * @param string $filepath
  *   The path to the uploaded MARC MRC collection file.
  * @param string $marc_identifier_xpath
@@ -547,12 +660,24 @@ function islandora_marc_utility_get_marc_mods_bib_id_from_record($recordobj_or_x
  * @param string $mods_identifier_solr_fieldname
  *   The value to search the existing Islandora repository for an object that
  * matches the MARC identifier value.
+ * @param string $namespace
+ *   The fedora namespace for the intended objects - ONLY for the purposes of
+ * filenames that get created for export.  See "Islandora Datastreams Input/Output
+ * Utility" https://github.com/ulsdevteam/islandora_datastreams_io for more info
+ * on importing ZIP files.
  * @return array
  *   An associative array that contains info about the MARC and MODS files that
  * were able to be parsed out of the MARC mrc collection.
  */
-function islandora_marc_utility_marcxml_split($filepath, $marc_identifier_xpath, $mods_identifier_solr_fieldname) {
+function islandora_marc_utility_marcxml_split($filepath, $marc_identifier_xpath = '', $mods_identifier_solr_fieldname = '', $namespace = '') {
   module_load_include('inc', 'islandora_marc_utility', 'includes/solr_query');
+
+  $marc_identifier_xpath = (!$marc_identifier_xpath) ?
+      variable_get('islandora_marc_utility_mrc_identifier_tag_xpath', MRC_XPATH_PLACEHOLDER) : $marc_identifier_xpath;
+  $mods_identifier_solr_fieldname = (!$mods_identifier_solr_fieldname) ?
+      variable_get('islandora_marc_utility_mods_solr_fieldname', MODS_SOLR_FIELDNAME_PLACEHOLDER) : $mods_identifier_solr_fieldname;
+  $namespace = (!$namespace) ?
+      variable_get('islandora_marc_utility_namespace', 'islandora') : $namespace;
 
   $return_files = array();
   $marcxml = file_get_contents($filepath);
@@ -568,7 +693,7 @@ function islandora_marc_utility_marcxml_split($filepath, $marc_identifier_xpath,
     $str = $doc->saveHTML($node);
     $str = str_replace("<marc:record>", '<marc:record xmlns:marc="http://www.loc.gov/MARC21/slim">', $str);
 
-    $results = islandora_marc_utility_get_marc_mods_bib_id_from_record($str, $i);
+    $results = islandora_marc_utility_get_marc_mods_bib_id_from_record($str, $i, $namespace);
     $return_files[$i]['bib_id'] = $results['bib_id'];
     $marc_contents = file_get_contents($results['MARC']);
     $return_files[$i]['Fedora_PID'] = islandora_marc_utility_find_object_pid_from_marcxml_file($marc_contents, $marc_identifier_xpath, $mods_identifier_solr_fieldname);

@@ -24,19 +24,31 @@ function set_override_elements(control) {
     jQuery('#edit-mods-solr-fieldname').removeClass("disabled_text");
     jQuery('.edit-mods-solr-fieldname label').removeClass("disabled_text");
     jQuery('.form-item-mods-solr-fieldname').removeClass("form-disabled");
+    jQuery('#edit-namespace').removeAttr("disabled");
+    jQuery('#edit-namespace').removeAttr("readonly");
+    jQuery('.edit-namespace label').addClass("enabled_text");
+    jQuery('#edit-namespace').removeClass("disabled_text");
+    jQuery('.edit-namespace label').removeClass("disabled_text");
+    jQuery('.form-item-namespace').removeClass("form-disabled");
   }
   else {
     jQuery('#edit-mrc-identifier-tag-xpath').attr('disabled', 'disabled');
     jQuery('#edit-mrc-identifier-tag-xpath').attr('readonly', 'readonly');
-    jQuery('#edit-mrc-identifier-tag-xpath').addClass("disabled_text");    
-    jQuery('.edit-mrc-identifier-tag-xpath label').addClass("disabled_text");    
+    jQuery('#edit-mrc-identifier-tag-xpath').addClass("disabled_text");
+    jQuery('.edit-mrc-identifier-tag-xpath label').addClass("disabled_text");
     jQuery('.edit-mrc-identifier-tag-xpath label').removeClass("enabled_text");
     jQuery('.form-item-mrc-identifier-tag-xpath').addClass("form-disabled");
     jQuery('#edit-mods-solr-fieldname').attr('disabled', 'disabled');
     jQuery('#edit-mods-solr-fieldname').attr('readonly', 'readonly');
-    jQuery('#edit-mods-solr-fieldname').addClass("disabled_text");    
+    jQuery('#edit-mods-solr-fieldname').addClass("disabled_text");
     jQuery('.edit-mods-solr-fieldname label').addClass("disabled_text");
     jQuery('.edit-mods-solr-fieldname label').removeClass("enabled_text");
     jQuery('.form-item-mods-solr-fieldname').addClass("form-disabled");
+    jQuery('#edit-namespace').attr('disabled', 'disabled');
+    jQuery('#edit-namespace').attr('readonly', 'readonly');
+    jQuery('#edit-namespace').addClass("disabled_text");
+    jQuery('.edit-namespace label').addClass("disabled_text");
+    jQuery('.edit-namespace label').removeClass("enabled_text");
+    jQuery('.form-item-namespace').addClass("form-disabled");
   }
 }

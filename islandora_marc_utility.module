@@ -50,12 +50,28 @@ function islandora_marc_utility_menu() {
       'access arguments' => array(ISLANDORA_MARC_UTILITY),
       'file' => 'includes/download.inc',
     ),
+    'admin/islandora/tools/islandora_marc_utility/downloadall/%' => array(
+      'title' => t('Islandora MARC Utility | Download'),
+      'type' => MENU_CALLBACK,
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('islandora_marc_utility_download_all', 5),
+      'access arguments' => array(ISLANDORA_MARC_UTILITY),
+      'file' => 'includes/download.inc',
+    ),
     'admin/islandora/tools/islandora_marc_utility/apply_datastream/%' => array(
       'title' => t('Islandora MARC Utility | Apply Datastream'),
       'type' => MENU_CALLBACK,
       'page callback' => 'drupal_get_form',
       'page arguments' => array('islandora_marc_utility_apply_datastream_handler', 5),
-      'access arguments' => array(ISLANDORA_MARC_UTILITY),
+      'access arguments' => array(ISLANDORA_MARC_UTILITY_CAN_APPLY_DATASTREAM),
+      'file' => 'includes/apply_datastream.inc',
+    ),
+    'admin/islandora/tools/islandora_marc_utility/applyall/%' => array(
+      'title' => t('Islandora MARC Utility | Apply Datastream'),
+      'type' => MENU_CALLBACK,
+      'page callback' => 'drupal_get_form',
+      'page arguments' => array('islandora_marc_utility_apply_all_datastream_handler', 5),
+      'access arguments' => array(ISLANDORA_MARC_UTILITY_CAN_APPLY_DATASTREAM),
       'file' => 'includes/apply_datastream.inc',
     ),
   );
@@ -93,7 +109,9 @@ function islandora_marc_utility_preprocess_page(&$vars) {
       'admin/islandora/tools/islandora_marc_utility',
       'admin/islandora/tools/islandora_marc_utility/viewer/%',
       'admin/islandora/tools/islandora_marc_utility/download/%',
+      'admin/islandora/tools/islandora_marc_utility/downloadall/%',
       'admin/islandora/tools/islandora_marc_utility/apply_datastream/%',
+      'admin/islandora/tools/islandora_marc_utility/applyall/%',
     );
   if (is_array($item)) {
     if (!(array_search($item['path'], $paths_for_css) === FALSE)) {

@@ -32,3 +32,42 @@ function islandora_marc_utility_download($form, &$form_state, $hash) {
         'for download.'));
   }
 }
+
+function islandora_marc_utility_download_all($form, &$form_state, $hash) {
+  if ($hash) {
+    $records_manifest_filename = urldecode(base64_decode($hash));
+    $manifest = file_get_contents($records_manifest_filename);
+    $files = explode("\r\n", $manifest);
+
+    $initial_dir = getcwd();
+    $temp_path = variable_get('file_temporary_path', '/tmp');
+    chdir($temp_path);
+    $temp_zip_filename = tempnam($temp_path, 'marcmods_zip_');
+
+    $zipfile = new ZipArchive();
+    $zipfile->open($temp_zip_filename, ZIPARCHIVE::CREATE);
+    foreach ($files as $filename) {
+      if ($filename) {
+        $filename = str_replace($temp_path . '/', '', trim($filename));
+        $zipfile->addFile(trim($filename));
+      }
+    }
+    $zipfile->close();
+    chdir($initial_dir);
+
+    if (file_exists($temp_zip_filename)) {
+      // Set a value for display purposes.
+      $download_filename = date('Ymd') . '_MARC_MODS.zip';
+
+      header('Content-Type: application/octet-stream');
+      header('Content-disposition: attachment; filename='.$download_filename);
+      header('Content-Transfer-Encoding: Binary');
+      header('Content-Length: ' . filesize($temp_zip_filename));
+      readfile($temp_zip_filename);
+      exit;
+    }
+    else {
+      drupal_set_message(t('The underlying files could not be found to make a zip file to download.'));
+    }
+  }
+}

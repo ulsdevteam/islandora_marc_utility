@@ -59,6 +59,22 @@ function islandora_marc_utility_admin_settings(array $form, array &$form_state) 
       t(' will be used.'),
     '#default_value' => variable_get('islandora_marc_utility_temp_path', ''),
   );
+  $form['namespace'] = array(
+    '#title' => t('Fedora namespace'),
+    '#type' => 'textfield',
+    '#attributes' => array(
+      'placeholder' => 'islandora',
+    ),
+    '#description' => t('Namespace for objects in the datastore.  For an object ' .
+      '"<b>islandora</b>:123", the namespace is "islandora".  ') .
+      (module_exists('islandora_datastreams_io') ?  t('"Islandora Datastreams ' .
+          'Input/Output Utility" is installed and')
+        : t('The module "') . l('Datastreams Input/Output Utility',
+            'https://github.com/ulsdevteam/islandora_datastreams_io') . '"') .
+      t(' is capable of importing the ZIP files that are created by this utility\'s ' .
+          '"Download all" function.'),
+      '#default_value' => variable_get('islandora_marc_utility_namespace'),
+    );
 
   $form['submit'] = array(
     '#type' => 'submit',
@@ -66,6 +82,27 @@ function islandora_marc_utility_admin_settings(array $form, array &$form_state) 
   );
 
   return $form;
+}
+
+/**
+ * Validates the form input.
+ *
+ * Checks the namespace value is legal.
+ *
+ * @param array $elements
+ *   Drupal elements representation as an array.
+ * @param array $form_state
+ *   Drupal form_state representation as passed to the validate function.
+ * @param string $form_id
+ *   The form_id that is being validated -- optional.
+ */
+function islandora_marc_utility_admin_settings_validate(&$elements, &$form_state, $form_id = NULL) {
+  // Check that the input for namespace satisfies this:
+  $namespace = $form_state['values']['namespace'];
+  if ($namespace <> '' && !preg_match("/^([A-Za-z0-9]{2,50}|-|\.)$/iD", $namespace)) {
+    form_set_error('namespace', t('<b>Namespace value must only include alphanumeric characters.</b>',
+        array('@namespace' => $namespace)));
+  }
 }
 
 /**
@@ -81,6 +118,7 @@ function islandora_marc_utility_admin_settings_submit(array $form, array &$form_
   $id = $form_state['triggering_element']['#id'];
   switch ($id) {
     case 'edit-submit':
+      variable_set('islandora_marc_utility_namespace', $form_state['values']['namespace']);
       // If blank, provide the value from the site configured media path.
       $use_value = ($form_state['values']['temp_path'] == '') ?
           variable_get('file_temporary_path') :
