@@ -581,8 +581,8 @@ function islandora_marc_utility_get_marc_mods_bib_id_from_record($recordobj_or_x
         '/transforms/modsxmlRecordExtract.xsl';
   $marcxmlRecordExtract_xsl = drupal_realpath(drupal_get_path('module', 'islandora_marc_utility')) .
         '/transforms/marcxmlRecordExtract.xsl';
-  $voyagerIDgrabber_xsl = drupal_realpath(drupal_get_path('module', 'islandora_marc_utility')) .
-        '/transforms/voyagerIDgrabber.xsl';
+  $bibIDgrabber_xsl = drupal_realpath(drupal_get_path('module', 'islandora_marc_utility')) .
+        '/transforms/bibIDgrabber.xsl';
 
   $return_array = array();
   $temp_path = drupal_realpath(variable_get('islandora_marc_utility_temp_path', variable_get('file_temporary_path', '/tmp')));
@@ -609,7 +609,7 @@ function islandora_marc_utility_get_marc_mods_bib_id_from_record($recordobj_or_x
 
   $bib_id = ($marcxml_collection_record) ? islandora_marc_utility_runXslTransform(
             array(
-              'xsl' => $voyagerIDgrabber_xsl,
+              'xsl' => $bibIDgrabber_xsl,
               'input' => $marcxml_collection_record,
             )
           ) : '';
