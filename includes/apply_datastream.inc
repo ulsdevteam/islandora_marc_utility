@@ -43,7 +43,7 @@ function islandora_marc_utility_apply_all_datastream_handler($form, &$form_state
     $manifest = file_get_contents($applyall_manifest_filename);
     $lines = explode("\r\n", $manifest);
 
-    $temp_path = variable_get('file_temporary_path', '/tmp');
+    $temp_path = variable_get('islandora_marc_utility_temp_path', variable_get('file_temporary_path', '/tmp'));
 
     $last_pid = '';
     $i = 1;
@@ -52,7 +52,7 @@ function islandora_marc_utility_apply_all_datastream_handler($form, &$form_state
       @list($pid, $filename) = explode("=", $line, 2);
       if ($filename) {
         $filename = str_replace($temp_path . '/', '', trim($filename));
-        $files[$pid][] = str_replace($temp_path . '/', '', trim($filename));
+        $files[$pid][] = trim($filename);
         if ($last_pid <> $pid) {
           if (array_key_exists($last_pid, $files)) {
             $form['info_' . $i] = array(
@@ -70,6 +70,10 @@ function islandora_marc_utility_apply_all_datastream_handler($form, &$form_state
         '#markup' => '<b>' . $last_pid . '</b><ul><li>' . implode("</li><li>", $files[$last_pid]) . '</li></ul>',
     );
   }
+  $form['hash'] = array(
+    '#type' => 'hidden',
+    '#value' => $hash,
+  );
   if ($i > 1) {
     $form['submit'] = array(
       '#type' => 'submit',
@@ -81,6 +85,97 @@ function islandora_marc_utility_apply_all_datastream_handler($form, &$form_state
 }
 
 function islandora_marc_utility_apply_all_datastream_handler_submit($form, &$form_state) {
-  drupal_set_message('form submitted');
-  dpm($form_state);
+  $hash = $form_state['values']['hash'];
+  if ($hash) {
+    $applyall_manifest_filename = urldecode(base64_decode($hash));
+    $manifest = file_get_contents($applyall_manifest_filename);
+    $lines = explode("\r\n", $manifest);
+    foreach ($lines as $line) {
+      @list($pid, $filename) = explode("=", $line, 2);
+      if ($filename) {
+        $islandora_object = islandora_object_load($pid);
+        if (is_object($islandora_object)) {
+          // Parse the filename to get the datastream id (DSID) value.
+          $pathinfo = pathinfo($filename);
+          $parts = explode("_", $pathinfo['filename']);
+          $dsid = $parts[count($parts) - 1];
+          $file_contents = file_get_contents($filename);
+          islandora_marc_utility_add_datastream($islandora_object, $dsid, $file_contents);
+        }
+        else {
+          drupal_set_message(t('The Islandora object "' . $pid . '" could not be loaded'), 'warning');
+        }
+      }
+    }
+    drupal_set_message('Form submitted.');
+  }
+  else {
+    drupal_set_message('Nothing was submitted.');
+  }
 }
+
+/**
+ * This will ingest a new datastream made from $file_contents to the supplied
+ * $object and use the datastream identifier = $datastream_id.  This will 
+ * either update the existing datastream if it exists on the object, or it will
+ * create a new datastream.
+ *
+ * @param stdObject $object
+ * @param string $datastream_id
+ *   The datastream identifier.
+ * @param string $file_contents
+ *   The contents to store in the new datastream.
+ * @return array
+ *   An array with success and message info.
+ */
+function islandora_marc_utility_add_datastream($object, $datastream_id, $file_contents) {
+  try {
+    $ingest = !isset($object[$datastream_id]);
+    if ($ingest) {
+      $ds = $object->constructDatastream($datastream_id, "M");
+      $ds->label = $datastream_id;
+    }
+    else {
+      $ds = $object[$datastream_id];
+    }
+    if ($ds->mimetype != 'application/xml') {
+      $ds->mimetype = 'application/xml';
+    }
+    $ds->setContentFromString($file_contents);
+    if ($ingest) {
+      $object->ingestDatastream($ds);
+    }
+    return array(
+      'success' => TRUE,
+      'messages' => array(
+        array(
+          'message' => t('Created @dsid derivative for OBJ (@pid).'),
+          'message_sub' => array(
+            '@dsid' => $datastream_id,
+            '@pid' => $object->id,
+          ),
+          'type' => 'dsm',
+        ),
+      ),
+    );
+  }
+  catch (exception $e) {
+    return array(
+      'success' => FALSE,
+      'messages' => array(
+        array(
+          'message' => t('Failed to add @dsid datastream for @pid. Error message: "@message" with trace: @stack'),
+          'message_sub' => array(
+            '@dsid' => $datastream_id,
+            '@pid' => $object->id,
+            '@message' => $e->getMessage(),
+            '@stack' => $e->getTraceAsString(),
+          ),
+          'type' => 'watchdog',
+          'severity' => WATCHDOG_ERROR,
+        ),
+      ),
+    );
+  }
+}
+

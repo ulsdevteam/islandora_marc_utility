@@ -245,7 +245,7 @@ function islandora_marc_utility_form_step2($form, &$form_state, $is_completed = 
         $download_files[] = $marc_and_mods_arr['MARC']['filepath'] . '
 ';
         if ($marc_and_mods_arr['Fedora_PID']) {
-          $applyall_files[] = $marc_and_mods_arr['Raw_Fedora_PID'] . '=' . $temp_path . '/' . $marc_and_mods_arr['MARC']['filepath'] . '
+          $applyall_files[] = $marc_and_mods_arr['Raw_Fedora_PID'] . '=' . $marc_and_mods_arr['MARC']['filepath'] . '
 ';
         }
       }
@@ -253,7 +253,7 @@ function islandora_marc_utility_form_step2($form, &$form_state, $is_completed = 
         $download_files[] = $marc_and_mods_arr['MODS']['filepath'] . '
 ';
         if ($marc_and_mods_arr['Fedora_PID']) {
-          $applyall_files[] = $marc_and_mods_arr['Raw_Fedora_PID'] . '=' . $temp_path . '/' . $marc_and_mods_arr['MODS']['filepath'] . '
+          $applyall_files[] = $marc_and_mods_arr['Raw_Fedora_PID'] . '=' . $marc_and_mods_arr['MODS']['filepath'] . '
 ';
         }
       }
@@ -263,9 +263,9 @@ function islandora_marc_utility_form_step2($form, &$form_state, $is_completed = 
       unset($marc_and_mods_records[$idx]['Raw_Fedora_PID']);
     }
 
-    $temp_records_manifest_filename = tempnam(variable_get('file_temporary_path', '/tmp'), 'marc_utility_downloadall_manifest_');
+    $temp_records_manifest_filename = tempnam($temp_path, 'marc_utility_downloadall_manifest_');
     file_put_contents($temp_records_manifest_filename, $download_files);
-    $temp_applyall_manifest_filename = tempnam(variable_get('file_temporary_path', '/tmp'), 'marc_utility_applyall_manifest_');
+    $temp_applyall_manifest_filename = tempnam($temp_path, 'marc_utility_applyall_manifest_');
     file_put_contents($temp_applyall_manifest_filename, $applyall_files);
     $form['download_all_link'] = array(
       '#type' => 'item',
